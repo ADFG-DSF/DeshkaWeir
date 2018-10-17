@@ -1,0 +1,259 @@
+---
+title: 'Example: Deshka 2018 Forecast'
+author: "Adam Reimer"
+date: "January 12, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10)
+```
+
+## Introduction
+This example will use the Deshka River Chinook salmon brood table to demonstrate preseason salmon forecasts in R. The process is similar to the SAS/Excel workflow we have traditionally used but offers improved repeatability, improved cross validation for model selection and offer a flexible framework where other models can be considered easily. The functions used in this tutorial are all part of the "preseason" package available on GitHub.  To get the package first install the package "devtools" then run the following code in R:
+```{r, eval = FALSE}
+devtools::install_github("adamreimer/preseason")
+```
+```{r}
+library(preseason)
+```
+
+If it worked you should be able to see the Deshka brood table by typing. 
+```{r}
+deshka[1:dim(deshka)[1], ]
+``` 
+
+Please reveiw and make sure you are happy with this version. We should probably consider if age 3 zeros are actual zeros or NA's, which we could interpret as "not monitored". 
+
+To begin we prepare the brood table for analysis in each age class using the function "prep_brood".  In the output the column "lnRS" is relative the oldest age included in the table and years without complete broods relative to the oldest age in the table are removed.
+```{r}
+dat4 <- prep_brood(deshka, age_range = 3:4)
+tail(dat4)
+dat5 <- prep_brood(deshka, age_range = 3:5)
+tail(dat5)
+dat6 <- prep_brood(deshka, age_range = 4:6)
+tail(dat6)
+```
+
+We will primarily work with the logs of abundance (suffix "_ln") because normal distributions that fit these data include negative run sizes.
+```{r}
+par(mfrow = c(2,2))
+plot_dist(deshka$age3)
+plot_dist(deshka$age4)
+plot_dist(deshka$age5)
+plot_dist(deshka$age6)
+par(mfrow = c(1,1))
+```
+
+## Sibling models
+### Age 4
+The sibling model was insignificant for age 4 fish so let's move on.
+```{r}
+sib4 <- lm(age4_ln ~ age3, data = dat4)
+summary(sib4)
+```
+
+###Age 5
+For age 5 fish we get a significant model with decent looking residuals.
+```{r}
+sib5 <- lm(age5_ln ~ age4_ln + age3, data = dat5)
+summary(sib5)
+par(mfrow = c(2,2)); plot(sib5); par(mfrow = c(1,1))
+```
+
+Here is a look at the data, the trend for age 3 is pretty obvious but again, maybe those 0's aren’t real.
+```{r}
+ggplot2::ggplot(dat5, ggplot2::aes(x = age4_ln, y = age5_ln, size = age3)) + ggplot2::geom_point()
+```
+
+I don't see any residual correlation either.
+```{r}
+forecast::tsdisplay(residuals(sib5))
+```
+
+The function "pred_lm produces predictions for each year with all of the data except the data for that year using a linear model. We can save those to the original dataframe with the name "sib_pred" where the suffix "_pred" is important (a later function will look for variables with that suffix to preform comparisons.)
+```{r}
+temp <- pred_lm(sib5)
+dat5$sib_pred <- exp(temp[1,] + temp[2,]^2/2)
+```
+
+###Age 6
+Here is a sibling model for age 6 fish. 
+```{r}
+sib6 <- lm(age6_ln ~ age5_ln + age4_ln, data = dat6)
+summary(sib6)
+```
+
+Note that there is no sibling relationship between the 4's and the 6's so let's reduce the model.
+```{r}
+sib6 <- update(sib6, formula. = . ~ age5_ln)
+par(mfrow = c(2,2)); plot(sib6); par(mfrow = c(1,1))
+```
+
+This time we see significant residual correlation with a trend. The best fitting time series model is a AR1 model with differencing. The function "pred_arima" produces predictions for each year using a arima model and only the data prior to the predicted year. Let’s run that and save those predictions as well.
+```{r}
+forecast::tsdisplay(residuals(sib6))
+forecast::auto.arima(dat6$age6_ln, xreg = dat6$age5_ln)
+sib6_arima <- arima(dat6$age6_ln, c(1,1,0), xreg = dat6$age5_ln)
+temp <- pred_arima(sib6_arima, x = dat6$age6_ln, xreg = dat6$age5_ln)
+dat6$sib6_pred <- exp(temp[1,] + temp[2,]^2/2)
+```
+
+Rich was big on subsetting the data for sibling models which should be easy to accomplish if you are interested.
+
+## Ricker models
+### Age 4
+The age 4 Ricker model looks good with no residual correlation so save the predictions with the “pred_lm” function.
+```{r}
+rick4 <- lm(lnRS ~ S, data = dat4)
+summary(rick4)
+par(mfrow = c(2,2)); plot(rick4); par(mfrow = c(1,1))
+plot(dat4$S, dat4$lnRS)
+forecast::tsdisplay(residuals(rick4))
+dat4$ricker_pred <- exp(pred_lm(rick4)[1,]) * dat4$S
+```
+
+### Age 5
+The age 5 Ricker model also looks good but has some residual correlation.
+```{r}
+rick5 <- lm(lnRS ~ S, data = dat5)
+summary(rick5)
+par(mfrow = c(2,2)); plot(rick5); par(mfrow = c(1,1))
+plot(dat5$S, dat5$lnRS)
+forecast::tsdisplay(residuals(rick5))
+```
+
+Looks like and AR1 process is the best fit, save the predictions using the "pred_arima" function.
+```{r}
+forecast::auto.arima(dat5$lnRS, xreg = dat5$S)
+rick5_ar1 <- arima(dat5$lnRS, order=c(1,0,0), xreg = dat5$S)
+AIC(rick5, rick5_ar1)
+forecast::tsdisplay(residuals(rick5_ar1))
+dat5$ricker_pred <- exp(pred_arima(rick5_ar1, x = dat5$lnRS, xreg = dat5$S)[1,]) * dat5$S
+```
+
+### Age 6
+The age 6 Ricker model is insignificant.
+```{r}
+rick6 <- lm(lnRS ~ S, data = dat6)
+summary(rick6)
+par(mfrow = c(2,2)); plot(rick6); par(mfrow = c(1,1))
+plot(dat6$S, dat6$lnRS)
+```
+
+## Mean with residual correlation
+Anton called these univariate models.
+
+### Age 4
+There may be some residual correlation in the form of a MA1 process. We can use the pred_arima function to get these predictions and save them to our age 4 dataset.
+```{r}
+forecast::tsdisplay(dat4$age4_ln)
+forecast::auto.arima(dat4$age4_ln)
+mu4_ma1 <- arima(dat4$age4_ln, order=c(0,0,1))
+AIC(mu4_ma1, lm(dat4$age4_ln ~ 1))
+temp <- pred_arima(mu4_ma1, x = dat4$age4_ln)
+dat4$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
+```
+
+### Age 5
+Same as age 4's.
+```{r}
+forecast::tsdisplay(dat5$age5_ln)
+forecast::auto.arima(dat5$age5_ln)
+mu5_ma1 <- arima(dat5$age5_ln, order=c(0,0,1))
+temp <- pred_arima(mu5_ma1, x = dat5$age5_ln)
+dat5$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
+```
+
+### Age 6
+This time there is a trend and the correlation is AR1.
+```{r}
+forecast::tsdisplay(dat6$age6_ln)
+forecast::auto.arima(dat6$age6_ln)
+mu6_ar1d <- arima(dat6$age6_ln, order=c(1,1,0))
+temp <- pred_arima(mu6_ar1d, x = dat6$age6_ln)
+dat6$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
+```
+
+## Moving average models
+This function gives the moving average for a specified number of years.  I'll do a 5 year moving average for each age, and a moving average of all prior years of age 6's for illustration purposes. Don't worry about the predictions right now, we’ll see them later. You may want to play with different timeframes.
+```{r}
+dat4$ma5_pred <- pred_ma(dat4$age4_ln, yrs = 5)
+dat5$ma5_pred <- pred_ma(dat5$age5_ln, yrs = 5)
+dat6$ma5_pred <- pred_ma(dat6$age6_ln, yrs = 5)
+dat6$ma_pred <- pred_ma(dat6$age6_ln)
+```
+
+## Exponential smoothing
+Instead of trying to figure out a fixed number of years to include in our moving average we can use a method called exponential smoothing where you take a weighted average of the previous observation and the previous prediction. Since the previous prediction is also a weighted average (of the observation and prediction one year prior) you end up with a moving average where the recent data can be weighted more heavily. 
+
+```{r}
+forecast::ets(dat4$age4_ln, "ANN")
+dat4$es_pred <- pred_es(dat4$age4_ln)
+forecast::ets(dat5$age5_ln, "ANN")
+dat5$es_pred <- pred_es(dat5$age5_ln)
+forecast::ets(dat6$age6_ln, "ANN")
+dat6$es_pred <- pred_es(dat6$age6_ln)
+```
+
+##Model Comparison
+
+### Age 4
+The function "comp_mods" provides a figure and two statistics to help you decide on the best model. Use md(mean deviation) to assess bias (closest to zero is best) and mad to assess accuracy (smaller is better). In general you want the lowest mad you can get but we will see exceptions.
+```{r, out.width = "135%", warning = FALSE}
+comp_models(dat4, 4)
+```
+
+### Age 5
+A possible exception! 
+```{r, out.width = "135%", warning = FALSE}
+comp_models(dat5, 5)
+```
+Notice that sib_pred had the lowest mad but the md is almost equal to the mad. This means it almost always missed in the same direction (too high). Normally I'd opt for ma5_pred instead since the mad is similar but the md is close to 0. But close examination of the graphic shows that the sib preds were very close in all but one year.  Let’s rerun the comparison only considering the last 4 years of predictions (the default is the last 5).
+```{r, out.width = "135%", warning = FALSE}
+comp_models(dat5, 5, years = 4)[[2]]
+```
+Now the sib_pred model looks like a clear winner. For full disclosure I have no opinion on which model you should choose.  I'm just trying to walk through some thought processes.
+
+### Age 6
+Recall the mu_pred model was the moving average on all prior years of data, you can see it's slow to react.
+```{r, out.width = "135%", warning = FALSE}
+comp_models(dat6, 6)
+```
+
+##2018 forecast
+I'll try to incorporate next years predictions into the pred_* functions in the future but here are some examples for how to create predictions for the upcoming season.
+
+###Moving average models
+```{r}
+ma5 <- function(dat){
+  y <- dat[(length(dat) - 4):length(dat)]
+  exp(mean(y) + var(y)/2)
+}
+ma5(dat4$age4_ln)
+ma5(dat5$age5_ln)
+ma5(dat6$age6_ln)
+```
+
+### Age 4 Ricker
+This is a linear model with no autocorrelation, the x variable is the number of spawners for the brood year.
+```{r}
+tail(deshka, 7)
+```
+```{r}
+exp(predict(rick4, data.frame(S = 16099))) * 16099
+```
+
+### Age 5 sibling
+This is a linear model with no autocorrelation, the x variables are the natural log of the number of age 4 fish in the brood year and the number of age 3 fish in the brood year.
+```{r}
+temp <- predict(sib5, data.frame(age4_ln = log(1706), age3 = 4029), se.fit = TRUE)
+exp(temp$fit + temp$se.fit^2/2)
+```
+
+### Age 6 sibling
+This is a linear model with autocorrelation, the x variable is the natural log of the number of age 5 fish in the brood year.
+```{r}
+temp <- predict(sib6_arima, newxreg = log(9391))
+exp(temp$pred + temp$se^2/2)
+```

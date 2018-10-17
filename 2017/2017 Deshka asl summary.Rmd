@@ -1,0 +1,137 @@
+---
+title: "Deshka Weir 2017"
+author: "Adam Reimer"
+date: "November 8, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(aslpack)
+knitr::opts_chunk$set(echo = FALSE)
+chin_weir <- readxl::read_xlsx("H:\\My Documents\\Deshka R, Chinook and Coho\\2017\\2017 Deshka Chinook Age Analysis_DL.xlsx",
+                         sheet = 2,
+                         range = "A11:M121",
+                         col_names = c("date", "passage", "samples", "strata"),
+                         col_types = c("date", "numeric", rep("skip", 3), "guess", rep("skip", 6), "numeric"))
+chin_asl <- readxl::read_xlsx("H:\\My Documents\\Deshka R, Chinook and Coho\\2017\\2017 Deshka Chinook Age Analysis_DL.xlsx",
+                          sheet = 4,
+                          range = "A5:J287",
+                          col_names = c("date", "sex", "length", "age", "strata"),
+                          col_types = c("date", rep("skip", 2), rep("guess", 2), rep("skip", 3), "text", "numeric"))
+chin_asl$age[grepl("1.1", chin_asl$age)] <- 1.1
+
+coho_weir <- readxl::read_xlsx("H:\\My Documents\\Deshka R, Chinook and Coho\\2017\\2017 Deshka coho sex comp_DL.xlsx",
+                         sheet = 3,
+                         range = "A5:F56",
+                         col_names = c("date", "passage", "samples", "strata"),
+                         col_types = c("date", "numeric", rep("skip", 2), "numeric", "text"))
+#extend first and last strata to encoumpass all weir counts
+coho_weir$strata <- ifelse(coho_weir$strata < 3, 3, coho_weir$strata)
+coho_weir$strata <- ifelse(is.na(coho_weir$strata), 6, coho_weir$strata)
+
+coho_sl <- readxl::read_xlsx("H:\\My Documents\\Deshka R, Chinook and Coho\\2017\\2017 Deshka coho sex comp_DL.xlsx",
+                          sheet = 2,
+                          range = "A3:F341",
+                          col_names = c("date", "sex", "length", "strata"),
+                          col_types = c("date", rep("skip", 2), "text", "numeric", "text"))
+```
+
+## Chinook ASL
+
+ASL samples were collected in proportion to abundance indicating pooled ASL estimates are sufficient.
+```{r}
+passage <- rep(chin_weir$date, times = chin_weir$passage)
+samples <- rep(chin_weir$date, times = chin_weir$samples)
+plot(ecdf(passage), main = "Passage and samples ECD in time", ylab = "Proportion", xaxt = "n")
+axis(1, chin_weir$date, format(chin_weir$date, "%b %d"))
+plot(ecdf(samples), add = TRUE, col = "red")
+legend("right", legend = c("weir passage", "asl samples"), col = c("black", "red"), pch = 16)
+ks.test(as.numeric(passage),
+        as.numeric(samples))
+```
+
+### Chinook sex composition
+Likelihood ratio tests indicate sex composition was similar between time strata, which is further evidence we don't need to stratify.
+```{r}
+t.chinsex<-table(chin_asl$strata,chin_asl$sex)
+addmargins(t.chinsex, c(1, 2))
+DescTools::GTest(t.chinsex)
+
+chin_total <- chin_weir%>%
+  dplyr::select(passage) %>%
+  dplyr::summarise(total = sum(passage))
+```
+
+Here is the Chinook sex-length table.  We met the precision objective.
+```{r}
+chin_sltable <- asl(chin_asl, chin_total) %>% asltable(totalname = "Weir Passage", display_cols = "stat", output = "sl")
+knitr::kable(chin_sltable)
+```
+
+### Chinook age composition
+Likelihood ratio tests indicate age composition was similar between time strata, which is further evidence we don't need to stratify.
+```{r}
+chin_age <- chin_asl[chin_asl$age %in% c("1.1", "1.2", "1.3", "1.4"), ]
+t.chinage<-table(chin_age$strata,chin_age$age)
+addmargins(t.chinage, c(1, 2))
+DescTools::GTest(t.chinage)
+```
+
+Here is the Chinook age-length table. We met the precision objective.
+```{r}
+chin_altable <- asl(chin_age, chin_total) %>% asltable(totalname = "Weir Passage", display_cols = "stat", output = "al")
+knitr::kable(chin_altable)
+```
+
+### Chinook age-sex composition
+Here is the Chinook age-sex-length table.
+```{r}
+chin_asltable <- asl(chin_age, chin_total) %>% asltable(totalname = "Weir Passage", output = "asl")
+knitr::kable(chin_asltable)
+```
+
+## Coho SL
+
+Note there was one record with a length of 55cm.  I changed this to 550, let me know if that's incorrect.
+```{r}
+coho_sl[coho_sl$length == 55,]
+coho_sl$length[coho_sl$length == 55] <- 550
+```
+
+Sex composition of coho salmon does not differ between time strata, indicating pooled ASL estimates are sufficient.
+```{r}
+tab <- table(coho_sl$strata, coho_sl$sex)
+addmargins(tab)
+chisq.test(tab)
+```
+
+Here is the pooled coho sex-length table. We met the precision objective.
+```{r}
+coho_totalstrata <-
+  coho_weir %>%
+  dplyr::group_by(strata) %>%
+  dplyr::summarise(total = sum(passage),
+                   samples = sum(samples))
+coho_total <- dplyr::summarise(coho_totalstrata, total = sum (total))
+
+coho_pooledsltable <- asl(coho_sl, coho_total) %>% asltable(totalname = "Weir Passage", display_cols = "stat", output = "sl")
+knitr::kable(coho_pooledsltable)
+```
+
+I also stratified the coho sex comp to compare.  Here is stratified coho sex-length table.
+```{r}
+coho_stratsltable <-
+  asl(coho_sl, coho_totalstrata, "strata") %>%
+  combine_strata() %>%
+  asltable(totalname = "Weir passage", display_cols = "stat", output = "sl")
+knitr::kable(coho_stratsltable)
+```
+
+The pooled coho age comp has virtually identical point estimates but smaller SE's so those are the one we should use.  I've included an excel file with all of these age comps.
+```{r}
+WriteXLS::WriteXLS(c("chin_sltable", "chin_altable", "chin_asltable", "coho_pooledsltable"),
+                   "H:\\My Documents\\Deshka R, Chinook and Coho\\2017\\17 Deshka ASL.xlsx",
+                   SheetNames = c("Chinook sex comp", "Chinook age Comp", "Chinook agesex comp", "coho sex comp"),
+                   AdjWidth = TRUE,
+                   BoldHeaderRow = TRUE)
+```
