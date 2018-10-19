@@ -68,25 +68,25 @@ al
 asl <- asl(clean_age, weir_sum) %>% tab_asl(totalname = "Weir", output = "asl")
 asl
 
-brood <- preseason::deshka %>% print(n = 100)
-brood <- rbind(brood,
-               data.frame(byr = 2018, S = NA, age3 = NA, age4 = NA, age5 = NA, age6 = NA, age7 = NA))
-tail(brood, n = 10)
-Ha <- apply(SusitnaEG::Ha[(dim(SusitnaEG::Ha)[1] - 2):dim(SusitnaEG::Ha)[1], "Deshka"], 2, mean)
+#Use 2018 asl to update Deshka brood table in preseason package
+brood <- preseason::deshka
+deshka <- rbind(brood,
+               data.frame(byr = 2018, S = NA, age3 = NA, age4 = NA, age5 = NA, age6 = NA))
+tail(deshka, n = 10)
+#Only Tyonek subsitance Harvest of Deshka Chinook, C&R inriver
 Hm <- 500 * mean(c(244, 175) / c(3118, 2735))
 new_dat <- 
   asl(clean_age, weir_sum) %>%
   dplyr::filter(sex == "Both") %>%
-  dplyr::mutate(H = (Ha + Hm) * p.z,
+  dplyr::mutate(H = Hm * p.z,
                 N = H + t.z)
   
-brood$S[brood$byr == 2018] <- new_dat$t.z[new_dat$age == "All"]
+deshka$S[deshka$byr == 2018] <- new_dat$t.z[new_dat$age == "All"]
 #need harvest
-brood$age3[brood$byr == 2015] <- as.integer(new_dat$N[new_dat$age == "1.1"])
-brood$age4[brood$byr == 2014] <- as.integer(new_dat$N[new_dat$age == "1.2"])
-brood$age5[brood$byr == 2013] <- as.integer(new_dat$N[new_dat$age == "1.3"])
-brood$age6[brood$byr == 2012] <- as.integer(new_dat$N[new_dat$age == "1.4"])
-brood$age7[brood$byr == 2011] <- 0
-tail(brood, n = 10)
+deshka$age3[deshka$byr == 2015] <- as.integer(new_dat$N[new_dat$age == "1.1"])
+deshka$age4[deshka$byr == 2014] <- as.integer(new_dat$N[new_dat$age == "1.2"])
+deshka$age5[deshka$byr == 2013] <- as.integer(new_dat$N[new_dat$age == "1.3"])
+deshka$age6[deshka$byr == 2012] <- as.integer(new_dat$N[new_dat$age == "1.4"])
+tail(deshka, n = 10)
 
-#devtools::use_data(deshka, overwrite = TRUE)
+devtools::use_data(deshka, pkg = "H:\\My Documents\\preseason", overwrite = TRUE)
