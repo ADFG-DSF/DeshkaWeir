@@ -89,4 +89,4 @@ deshka$age5[deshka$byr == 2013] <- as.integer(new_dat$N[new_dat$age == "1.3"])
 deshka$age6[deshka$byr == 2012] <- as.integer(new_dat$N[new_dat$age == "1.4"])
 tail(deshka, n = 10)
 
-devtools::use_data(deshka, pkg = "H:\\My Documents\\preseason", overwrite = TRUE)
+#devtools::use_data(deshka, pkg = "H:\\My Documents\\preseason", overwrite = TRUE)
