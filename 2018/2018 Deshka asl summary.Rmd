@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(aslpack)
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 weir <- readxl::read_xlsx(".\\2018 Deshka Chinook Age Analysis_DL.xlsx",
                          sheet = 2,
                          range = "A11:M102",
@@ -33,9 +33,10 @@ breaks <- c(as.POSIXct("2018-05-1 UTC"),
             as.POSIXct("2018-08-31 UTC"))
 weir$strata <- cut(weir$date, breaks, labels = 1:4)
 asl_dat$strata <- cut(asl_dat$date, breaks, labels = 1:4)
-compare_strata(asl_dat, weir, passage)[, c("strata", "asl_dates", "asl_pct", "total_dates", "total_pct")]
+knitr::kable(compare_strata(asl_dat, weir, passage)[, c("strata", "asl_dates", "asl_pct", "total_dates", "total_pct")])
 ```
- ASL samples were not collected in proportion to abundance indicating a need to stratify composition estimates provided they differ between stratum.
+  
+ASL samples were not collected in proportion to abundance indicating a need to stratify composition estimates provided they differ between stratum.
 ```{r, , fig.width = 10, fig.height = 8}
 plot_ks(weir, "passage")
 ```
@@ -63,7 +64,7 @@ addmargins(t.age, c(1, 2))
 DescTools::GTest(t.age)
 ```
 
-Here is the Chinook age-length table. We met the precision objective.
+Here is the Chinook age-length table. We met the precision objective (barely for age 1.1 and age 1.3).
 ```{r}
 al <- asl(clean_age, weir_sum) %>% tab_asl(totalname = "Weir", output = "al", display_cols = "stat")
 knitr::kable(al)

@@ -23,16 +23,28 @@ rick <- lm(lnRS ~ S, data = dat)
 summary(rick)
 par(mfrow = c(2,2)); plot(rick); par(mfrow = c(1,1))
 
+forecast::tsdisplay(residuals(rick))
+forecast::auto.arima(rick$model$lnRS, xreg = rick$model$S)
+rick_ar1 <- arima(rick$model$lnRS, order=c(1,0,0), xreg = rick$model$S, method = "ML")
+rick_ar1
+AIC(rick, rick_ar1)
+forecast::tsdisplay(residuals(rick_ar1))
+dat$ricker_pred <- exp(pred_arima(rick_ar1, x = rick$model$lnRS, xreg = rick$model$S)[1,]) * rick$model$S
 
+#Moving average
 dat$mu5_pred <- pred_ma(dat$age6_ln, yrs = 5)
 
+#mean
 forecast::tsdisplay(dat$age6_ln)
 forecast::auto.arima(dat$age6_ln)
 mu_ar1 <- arima(dat$age6_ln, order=c(0,1,0))
 temp <- pred_arima(mu_ar1, x = dat$age6_ln)
 dat$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
 
+#exponential smooting
 forecast::ets(dat$age6_ln, "ANN")
 dat$es_pred <- pred_es(dat$age6_ln)
 
 comp_models(dat, 6)
+comp_models(dat, 6, years = 4)[[2]]
+

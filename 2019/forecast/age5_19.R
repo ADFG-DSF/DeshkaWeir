@@ -24,14 +24,17 @@ rick_ar1
 forecast::tsdisplay(residuals(rick_ar1))
 dat$ricker_pred <- exp(pred_arima(rick_ar1, x = rick$model$lnRS, xreg = rick$model$S)[1,]) * rick$model$S
 
+#Moving average
 dat$mu5_pred <- pred_ma(dat$age5_ln, yrs = 5)
 
+#mean
 forecast::tsdisplay(dat$age5_ln)
 forecast::auto.arima(dat$age5_ln)
 mu_ts <- arima(dat$age5_ln, order=c(1,0,0))
 temp <- pred_arima(mu_ts, x = dat$age5_ln)
 dat$muarima_pred <- exp(temp[1,] + temp[2,]^2/2)
 
+#Exponential smoothing
 forecast::ets(dat$age5_ln, "ANN")
 dat$es_pred <- pred_es(dat$age5_ln)
 
