@@ -9,6 +9,7 @@ par(mfrow = c(2,2)); plot(sib); par(mfrow = c(1,1))
 forecast::tsdisplay(residuals(sib))
 temp <- pred_lm(sib)
 dat$sib_pred <- exp(temp[1,] + temp[2,]^2/2)
+dat$sibmd_pred <- exp(temp[1,])
 
 #ricker
 plot(dat$S, dat$lnRS)
@@ -25,17 +26,24 @@ forecast::tsdisplay(residuals(rick_ar1))
 dat$ricker_pred <- exp(pred_arima(rick_ar1, x = rick$model$lnRS, xreg = rick$model$S)[1,]) * rick$model$S
 
 #Moving average
-dat$mu5_pred <- pred_ma(dat$age5_ln, yrs = 5)
+dat$mu5_pred <- pred_ma(dat$age5_ln, yrs = 5)[, "mean"]
+dat$md5_pred <- pred_ma(dat$age5_ln, yrs = 5)[, "median"]
 
-#mean
+#Univariate
 forecast::tsdisplay(dat$age5_ln)
 forecast::auto.arima(dat$age5_ln)
 mu_ts <- arima(dat$age5_ln, order=c(1,0,0))
 temp <- pred_arima(mu_ts, x = dat$age5_ln)
 dat$muarima_pred <- exp(temp[1,] + temp[2,]^2/2)
+dat$mdarima_pred <- exp(temp[1,])
 
 #Exponential smoothing
 forecast::ets(dat$age5_ln, "ANN")
 dat$es_pred <- pred_es(dat$age5_ln)
 
 comp_models(dat, 5)
+#sibling looks good, I get a different prediction for 2019.
+#again note using the median when going back to the natural scale is prefered across all models
+tail(deshka)
+pred_19 <- predict(sib, newdata = data.frame(age4_ln = log(2146), age3_ln = log(874)), se.fit = TRUE)
+exp(pred_19$fit)

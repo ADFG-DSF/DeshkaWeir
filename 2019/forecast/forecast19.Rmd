@@ -1,0 +1,128 @@
+---
+title: "2019 forecast"
+author: "Adam Reimer"
+date: "November 2, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+library(preseason)
+```
+## Introduction
+Since we are working with lognormal data we conduct the analysis on the log scale and then transform back to the natural scale. Last year, we always transformed back to the mean. Throughout this document we are transforming back to the median. Theoretically, this change should do a better job at minimizing absolute errors (I verified this in the age specific codes).
+  
+## Age 4
+```{r echo = FALSE}
+dat4 <- prep_brood(deshka, 3:4)
+
+#ricker
+rick4 <- lm(lnRS ~ S, data = dat4)
+rick4_ts <- arima(rick4$model$lnRS, order=c(1,0,0), xreg = rick4$model$S, method = "ML")
+dat4$rickts_pred <- exp(pred_arima(rick4_ts, dat4$lnRS, dat4$S)[1, ]) * dat4$S
+
+#Moving average
+dat4$mu5_pred <- pred_ma(dat4$age4_ln, yrs = 5)[, "median"]
+
+#Univariate
+ts4 <- arima(dat4$age4_ln, order=c(1,0,0))
+temp_ts4 <- pred_arima(ts4, x = dat4$age4_ln)
+dat4$ts_pred <- exp(temp_ts4[1,])
+
+#Exponential smoothing
+ets4 <- forecast::ets(dat4$age4_ln, "ANN")
+dat4$es_pred <- pred_es(dat4$age4_ln)
+```
+There is no sibling relationship for this age class and all of the models have struggled recently. The best preforming models seem to be the Ricker model and the univariate time series model. I prefer the univariate model because the Ricker model is really dependent on it's time series component.
+```{r fig.width = 8}
+comp_models(dat4, 4)
+```
+  
+To get a prediction for the univariate model you can use the predict function.
+```{r}
+exp(predict(ts4, n.ahead = 1)$pred)
+```
+  
+Note that the Ricker model prediction is similar. Looking at the brood table first I use the escapement from 2015 because that is the next brood to produce a 4 year old age class.
+```{r}
+tail(deshka)
+exp(predict(rick4_ts, n.ahead = 1, newxreg = 25490)[[1]]) * 25490
+```
+  
+## Age 5
+```{r echo = FALSE}
+dat5 <- prep_brood(deshka, 3:5)
+
+#sibling model
+sib5 <- lm(age5_ln ~ age4_ln + age3_ln, data = dat5)
+temp_sib5 <- pred_lm(sib5)
+dat5$sib_pred <- exp(temp_sib5[1,])
+
+#ricker
+rick5 <- lm(lnRS ~ S, data = dat5)
+rick5_ar1 <- arima(rick5$model$lnRS, order=c(1,0,0), xreg = rick5$model$S, method = "ML")
+dat5$rickts_pred <- exp(pred_arima(rick5_ar1, x = rick5$model$lnRS, xreg = rick5$model$S)[1,]) * rick5$model$S
+
+#Moving average
+dat5$mu5_pred <- pred_ma(dat5$age5_ln, yrs = 5)[, "median"]
+
+#Univariate
+ts5 <- arima(dat5$age5_ln, order=c(1,0,0))
+temp_ts5 <- pred_arima(ts5, x = dat5$age5_ln)
+dat5$ts_pred <- exp(temp_ts5[1,])
+
+#Exponential smoothing
+ets5 <- forecast::ets(dat5$age5_ln, "ANN")
+dat5$es_pred <- pred_es(dat5$age5_ln)
+```
+The sibling model is clearly the best choice for age-5 fish. 
+```{r fig.width = 8}
+comp_models(dat5, 5)
+```
+  
+To get the prediction I check the brood table to find the sibling returns for the next 5 year old age class.
+```{r}
+tail(deshka)
+pred_19 <- predict(sib5, newdata = data.frame(age4_ln = log(2146), age3_ln = log(874)), se.fit = TRUE)
+exp(pred_19$fit)
+```
+  
+## Age 6
+```{r fig.width = 8, echo = FALSE}
+dat6 <- prep_brood(deshka, 4:6)
+
+#sibling model
+sib6_arima <- arima(dat6$age6_ln, c(1,1,0), xreg = dat6$age5_ln)
+temp_sib6 <- pred_arima(sib6_arima, x = dat6$age6_ln, xreg = dat6$age5_ln)
+dat6$sibts_pred <- exp(temp_sib6[1,])
+
+#ricker
+rick6 <- lm(lnRS ~ S, data = dat6)
+rick6_ts <- arima(rick6$model$lnRS, order=c(1,0,0), xreg = rick6$model$S, method = "ML")
+dat6$rickts_pred <- exp(pred_arima(rick6_ts, x = rick6$model$lnRS, xreg = rick6$model$S)[1,]) * rick6$model$S
+
+#Moving average
+dat6$mu5_pred <- pred_ma(dat6$age6_ln, yrs = 5)[, "median"]
+
+#univariate
+ts6 <- arima(dat6$age6_ln, order=c(0,1,0))
+temp_ts6 <- pred_arima(ts6, x = dat6$age6_ln)
+dat6$ts_pred <- exp(temp_ts6[1,])
+
+#exponential smooting
+ets6 <- forecast::ets(dat6$age6_ln, "ANN")
+dat6$es_pred <- pred_es(dat6$age6_ln)
+
+comp_models(dat6, 6)
+```
+  
+I don’t see a great model for this age class either. The 5-year moving average is the MAD choice but the figure does not inspire much confidence. We have to build the prediction by hand.
+```{r}
+tail(dat6[, 1:9])
+exp(mean(dat6$age6_ln[30:34]))
+```
+  
+The next choice would be the exponential smoothing model but the prediction is pretty pessimistic.
+```{r}
+exp(forecast::forecast(ets6, h = 1)[["mean"]])
+```

@@ -16,6 +16,7 @@ sib_arima <- arima(dat$age6_ln, c(1,1,0), xreg = dat$age5_ln)
 
 temp <- pred_arima(sib_arima, x = dat$age6_ln, xreg = dat$age5_ln)
 dat$sib_pred <- exp(temp[1,] + temp[2,]^2/2)
+dat$sibmd_pred <- exp(temp[1,])
 
 #ricker
 plot(dat$S, dat$lnRS)
@@ -32,19 +33,32 @@ forecast::tsdisplay(residuals(rick_ar1))
 dat$ricker_pred <- exp(pred_arima(rick_ar1, x = rick$model$lnRS, xreg = rick$model$S)[1,]) * rick$model$S
 
 #Moving average
-dat$mu5_pred <- pred_ma(dat$age6_ln, yrs = 5)
+dat$mu5_pred <- pred_ma(dat$age6_ln, yrs = 5)[, "mean"]
+dat$md5_pred <- pred_ma(dat$age6_ln, yrs = 5)[, "median"]
 
-#mean
+#univariate
 forecast::tsdisplay(dat$age6_ln)
 forecast::auto.arima(dat$age6_ln)
 mu_ar1 <- arima(dat$age6_ln, order=c(0,1,0))
 temp <- pred_arima(mu_ar1, x = dat$age6_ln)
 dat$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
+dat$md_pred <- exp(temp[1,])
 
 #exponential smooting
 forecast::ets(dat$age6_ln, "ANN")
 dat$es_pred <- pred_es(dat$age6_ln)
 
 comp_models(dat, 6)
-comp_models(dat, 6, years = 4)[[2]]
+head(dat)
+comp_models(dat[, c("byr", "age6", "mu5_pred", "es_pred", "md5_pred")], 6)
 
+#ets looks good but it close to just taking last years run size. Hard to believe ~100 6 year olds for 2019.
+ets <- forecast::ets(dat$age6_ln, "ANN")
+exp(predict(ets, h = 1)[["mean"]][1])
+#the moving average models also look good
+tail(dat)
+exp(mean(dat$age6_ln[30:34]) + var(dat$age6_ln[30:34])/2)
+#This is very skewed
+mean(dat$age6_ln[30:34])
+var(dat$age6_ln[30:34])
+exp(mean(dat$age6_ln[30:34]))
