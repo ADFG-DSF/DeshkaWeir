@@ -2,7 +2,9 @@
 title: "2019 forecast"
 author: "Adam Reimer"
 date: "November 2, 2018"
-output: html_document
+output: 
+  html_document: 
+    keep_md: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -11,6 +13,34 @@ library(preseason)
 ```
 ## Introduction
 Since we are working with lognormal data we conduct the analysis on the log scale and then transform back to the natural scale. Last year, we always transformed back to the mean. Throughout this document we are transforming back to the median. Theoretically, this change should do a better job at minimizing absolute errors (I verified this in the age specific codes).
+  
+## Age 3
+We do have modeled abundance of age 3 fish and we might as well use those given we use them everywhere else. We can go through the same process for the age 3 fish but I think the 5 year moving average is the right choice here. The data is too sparse to have much confidence in the other methods and it has been 5 years of large age 3 run sizes.
+```{r echo = FALSE}
+dat3 <- prep_brood(deshka, 3)
+
+#Moving average
+dat3$md5_pred <- pred_ma(dat3$ln, yrs = 5)[, "median"]
+
+#Univariate
+ts3 <- arima(dat3$ln, order=c(0,1,0))
+temp_ts3 <- pred_arima(ts3, x = dat3$ln)
+dat3$ts_pred <- exp(temp_ts3[1,])
+
+#Exponential smoothing
+ets3 <- forecast::ets(dat3$ln, "ANN")
+dat3$es_pred <- pred_es(dat3$ln)
+```
+
+```{r fig.width = 8}
+comp_models(dat3, 3)
+```
+  
+Here is the prediction. First, we find the rows of our dataset that have the last 5 years of age 3 run sizes then we calculate the prediction referencing those row numbers.
+```{r}
+tail(dat3)
+exp(mean(dat3$ln[33:37]))
+```
   
 ## Age 4
 ```{r echo = FALSE}
@@ -88,6 +118,7 @@ exp(pred_19$fit)
 ```
   
 ## Age 6
+I don’t see a great model for this age class either. The 5-year moving average is the MAD choice but the figure does not inspire much confidence. We have to build the prediction by hand.
 ```{r fig.width = 8, echo = FALSE}
 dat6 <- prep_brood(deshka, 4:6)
 
@@ -116,7 +147,6 @@ dat6$es_pred <- pred_es(dat6$age6_ln)
 comp_models(dat6, 6)
 ```
   
-I don’t see a great model for this age class either. The 5-year moving average is the MAD choice but the figure does not inspire much confidence. We have to build the prediction by hand.
 ```{r}
 tail(dat6[, 1:9])
 exp(mean(dat6$age6_ln[30:34]))
