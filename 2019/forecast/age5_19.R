@@ -47,3 +47,18 @@ comp_models(dat, 5)
 tail(deshka)
 pred_19 <- predict(sib, newdata = data.frame(age4_ln = log(2146), age3_ln = log(874)), se.fit = TRUE)
 exp(pred_19$fit)
+
+#moving average
+tail(dat)
+exp(mean(dat$age5_ln[31:35]))
+
+#exponential smoothing
+ets <- forecast::ets(dat$age5_ln, "ANN")
+exp(predict(ets, h = 1)[["mean"]][1])
+
+#time series
+exp(predict(mu_ts, n.ahead = 1)$pred)
+
+#ricker 
+tail(deshka)
+exp(predict(rick_ar1, 1, newxreg = 15083)[[1]]) * 15083

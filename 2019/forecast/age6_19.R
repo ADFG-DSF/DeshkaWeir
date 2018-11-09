@@ -45,7 +45,7 @@ dat$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
 dat$md_pred <- exp(temp[1,])
 
 #exponential smooting
-forecast::ets(dat$age6_ln, "ANN")
+ets <- forecast::ets(dat$age6_ln, "ANN")
 dat$es_pred <- pred_es(dat$age6_ln)
 
 comp_models(dat, 6)
@@ -53,8 +53,8 @@ head(dat)
 comp_models(dat[, c("byr", "age6", "mu5_pred", "es_pred", "md5_pred")], 6)
 
 #ets looks good but it close to just taking last years run size. Hard to believe ~100 6 year olds for 2019.
-ets <- forecast::ets(dat$age6_ln, "ANN")
 exp(predict(ets, h = 1)[["mean"]][1])
+
 #the moving average models also look good
 tail(dat)
 exp(mean(dat$age6_ln[30:34]) + var(dat$age6_ln[30:34])/2)
@@ -62,3 +62,16 @@ exp(mean(dat$age6_ln[30:34]) + var(dat$age6_ln[30:34])/2)
 mean(dat$age6_ln[30:34])
 var(dat$age6_ln[30:34])
 exp(mean(dat$age6_ln[30:34]))
+
+#sibling
+tail(deshka)
+exp(predict(sib_arima, n.ahead = 1, newxreg = log(3024))$pred)
+
+#time series
+exp(predict(mu_ar1, n.ahead = 1)$pred)
+
+#ricker 
+tail(deshka)
+exp(predict(rick_ar1, 1, newxreg = 19532)[[1]]) * 19532
+
+

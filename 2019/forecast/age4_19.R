@@ -36,7 +36,7 @@ dat$mu_pred <- exp(temp[1,] + temp[2,]^2/2)
 dat$md_pred <- exp(temp[1,])
 
 #Exponential smoothing
-forecast::ets(dat$age4_ln, "ANN")
+ets <- forecast::ets(dat$age4_ln, "ANN")
 dat$es_pred <- pred_es(dat$age4_ln)
 
 comp_models(dat, 4)
@@ -51,5 +51,8 @@ tail(deshka)
 exp(predict(rick_ts, 1, newxreg = 25490)[[1]]) * 25490
 
 #I get a different ets prediction
-ets <- forecast::ets(dat$age4_ln, "ANN")
 exp(predict(ets, h = 1)[["mean"]][1])
+
+#moving average
+tail(dat)
+exp(mean(dat$age4_ln[32:36]))
