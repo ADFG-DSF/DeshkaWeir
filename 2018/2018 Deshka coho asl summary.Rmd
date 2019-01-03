@@ -1,0 +1,65 @@
+---
+title: "Deshka Weir 2018 - coho"
+author: "Adam Reimer"
+date: "January 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(aslpack)
+knitr::opts_chunk$set(echo = FALSE)
+coho_weir <- 
+  readxl::read_xlsx(".\\2018 Deshka coho sex comp_DL.xlsx",
+                    sheet = 3,
+                    range = "A5:F48",
+                    col_names = c("date", "passage", "samples", "strata"),
+                    col_types = c("date", "numeric", rep("skip", 2), "numeric", "text"))
+#extend second and last strata to encoumpass all earlier (and later) weir counts
+coho_weir$strata <- ifelse(coho_weir$date < as.POSIXct("2018-07-23 UTC"), 2, coho_weir$strata)
+coho_weir$strata <- ifelse(coho_weir$date > as.POSIXct("2018-08-26 UTC"), 6, coho_weir$strata)
+
+coho_weir_strata <-
+  coho_weir %>%
+  dplyr::group_by(strata) %>%
+  dplyr::summarise(total = sum(passage),
+                   samples = sum(samples))
+coho_weir_sum <- dplyr::summarise(coho_weir_strata, total = sum (total))
+
+coho_sl <- 
+  readxl::read_xlsx(".\\2018 Deshka coho sex comp_DL.xlsx",
+                    sheet = 2,
+                    range = "A3:F302",
+                    col_names = c("date", "sex", "length", "strata"),
+                    col_types = c("date", rep("skip", 2), "text", "numeric", "text"))
+biglg <- coho_sl$length[coho_sl$length >700]
+coho_sl$sex <- toupper(coho_sl$sex)
+
+```
+  
+## Coho SL
+Note there were `r length(biglg)` records with lengths of `r biglg[1]` and `r biglg[2]`.  I dropped the last digit in both cases, let me know if that is incorrect.
+```{r}
+coho_sl$length[coho_sl$length == 5758] <- 575
+coho_sl$length[coho_sl$length == 4954] <- 495
+```
+
+Sex composition of coho salmon does not differ between time strata, indicating pooled ASL estimates are sufficient. I also ran the stratified estimate but the pooled estimate had nearly identical point estimates with smaller SE's.
+```{r}
+#sex comp time invariant
+tab_lr(coho_sl, "sex")
+```
+
+Here is the pooled coho sex-length table. We met the precision objective.
+```{r}
+pooled_sl <- asl(coho_sl, coho_weir_sum) %>%
+  tab_asl(totalname = "Weir Passage", output = "sl")
+knitr::kable(pooled_sl)
+```
+
+```{r}
+WriteXLS::WriteXLS("pooled_sl",
+                   ".\\18 Deshka coho SL.xlsx",
+                   SheetNames = c("coho sex comp"),
+                   AdjWidth = TRUE,
+                   BoldHeaderRow = TRUE)
+```
