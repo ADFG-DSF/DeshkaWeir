@@ -1,0 +1,90 @@
+---
+title: "Deshka Weir 2019 - Chinook"
+author: "Adam Reimer"
+date: "November 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(aslpack)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+weir <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
+                         sheet = 2,
+                         range = "A11:M123",
+                         col_names = c("date", "passage", "samples", "strata"),
+                         col_types = c("date", "numeric", rep("skip", 3), "guess", rep("skip", 6), "numeric"))
+weir_sum <- data.frame(total = sum(weir$passage))
+
+#had to correct dat format in C192:194
+asl_dat <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
+                          sheet = 4,
+                          range = "C2:K272",
+                          col_names = c("date", "length", "sex", "age", "strata"),
+                          col_types = c("date", rep("skip", 2), rep("guess", 2), rep("skip", 2), "text", "numeric"))
+asl_dat$age[grepl("1.1", asl_dat$age)] <- 1.1
+```
+
+## Chinook ASL
+The strata you assigned look good. Each strata represents about a quarter of the samples and/or escapement.
+```{r}
+knitr::kable(compare_strata(asl_dat, weir, passage)[, c("strata", "asl_dates", "asl_pct", "total_dates", "total_pct")], 
+             col.names = c("strata", "asl_dates", "asl_pct", "escapement_dates", "escapement_pct"))
+```
+  
+ASL samples were not collected in proportion to abundance (the sampling actually looks pretty good to me, but we fail the test). This is only a problem if the composition estimates differ between strata, so we will test for that next.
+```{r, , fig.width = 7, fig.height = 7}
+plot_ks(weir, "passage")
+```
+
+### Chinook sex composition
+Likelihood ratio tests indicate sex composition was similar between time strata, which is evidence we don't need to stratify.
+```{r}
+t.sex<-table(asl_dat$strata,asl_dat$sex)
+addmargins(t.sex, c(1, 2))
+DescTools::GTest(t.sex)
+```
+
+Here is the Chinook sex-length table. We met the precision objective.
+```{r}
+sl <- asl(asl_dat, weir_sum) %>% tab_asl(totalname = "Weir Passage", output = "sl", display_cols = "stat")
+knitr::kable(sl)
+```
+
+### Chinook age composition
+Likelihood ratio tests indicate age composition was similar between time strata, which is evidence we don't need to stratify. I didn't include age 1.4 fish in the test because they were so infrequent but we will include them in the estimation.
+```{r}
+clean_age <- asl_dat[asl_dat$age %in% c("1.1", "1.2", "1.3", "1.4"), ]
+#t.age<-table(clean_age$strata,clean_age$age)
+#addmargins(t.age, c(1, 2))
+#chisq.test(t.age)
+#DescTools::GTest(t.age)
+
+red_age <- clean_age[clean_age$age %in% c("1.1", "1.2", "1.3"), ]
+t.age2<-table(red_age$strata,red_age$age)
+addmargins(t.age2, c(1, 2))
+#chisq.test(t.age2)
+DescTools::GTest(t.age2)
+```
+
+Here is the Chinook age-length table. We met the precision objective.
+```{r}
+al0 <- asl(clean_age, weir_sum)
+al<- al0 %>% tab_asl(totalname = "Weir", output = "al", display_cols = "stat")
+knitr::kable(al)
+```
+
+### Chinook age-sex composition
+Here is the Chinook age-sex-length table.
+```{r}
+asl <- al0 %>% tab_asl(totalname = "Weir", output = "asl")
+knitr::kable(asl)
+```
+
+I've included an excel file with all of these age comps.
+```{r}
+WriteXLS::WriteXLS(c("sl", "al", "asl"),
+                   ".\\19 Deshka ASL.xlsx",
+                   SheetNames = c("Chinook sex comp", "Chinook age Comp", "Chinook agesex comp"),
+                   AdjWidth = TRUE,
+                   BoldHeaderRow = TRUE)
+```
