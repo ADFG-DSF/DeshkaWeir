@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(aslpack)
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
-weir <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
+weir <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL_AR.xlsx",
                          sheet = 2,
                          range = "A11:M123",
                          col_names = c("date", "passage", "samples", "strata"),
@@ -16,7 +16,7 @@ weir <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
 weir_sum <- data.frame(total = sum(weir$passage))
 
 #had to correct dat format in C192:194
-asl_dat <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
+asl_dat <- readxl::read_xlsx(".\\Copy of 2019 Deshka Chinook Age Analysis_DL_AR.xlsx",
                           sheet = 4,
                           range = "C2:K272",
                           col_names = c("date", "length", "sex", "age", "strata"),

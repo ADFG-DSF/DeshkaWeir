@@ -1,5 +1,5 @@
 library(aslpack)
-weir <- readxl::read_xlsx(".\\2019\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
+weir <- readxl::read_xlsx(".\\2019\\Copy of 2019 Deshka Chinook Age Analysis_DL_AR.xlsx",
                           sheet = 2,
                           range = "A11:M123",
                           col_names = c("date", "passage", "samples", "strata"),
@@ -11,7 +11,7 @@ range(table(weir$date))
 plot(weir$passage, weir$samples)
 weir_sum <- data.frame(total = sum(weir$passage))
 
-asl_dat <- readxl::read_xlsx(".\\2019\\Copy of 2019 Deshka Chinook Age Analysis_DL.xlsx",
+asl_dat <- readxl::read_xlsx(".\\2019\\Copy of 2019 Deshka Chinook Age Analysis_DL_AR.xlsx",
                              sheet = 4,
                              range = "C2:K272",
                              col_names = c("date", "length", "sex", "age", "strata"),
