@@ -1,0 +1,83 @@
+---
+title: "Deshka Weir 2020 - Chinook"
+author: "Adam Reimer"
+date: "October 26, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("H:\\My Documents\\R_functions\\ASL_funs.R")
+library(magrittr)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+weir <- readxl::read_xlsx(".\\2020 Deshka Chinook Age Analysis_DL.xlsx",
+                          sheet = 2,
+                          range = "A11:M82",
+                          col_names = c("date", "passage", "samples", "strata"),
+                          col_types = c("date", "numeric", rep("skip", 3), "guess", rep("skip", 6), "numeric"))
+weir_sum <- data.frame(total = sum(weir$passage))
+
+asl_dat <- readxl::read_xlsx(".\\2020 Deshka Chinook Age Analysis_DL.xlsx",
+                             sheet = 4,
+                             range = "D2:L346",
+                             col_names = c("date", "length", "sex", "age", "strata"),
+                             col_types = c("date", rep("skip", 2), rep("guess", 2), rep("skip", 2), "text", "numeric"))
+asl_dat$age[grepl("1.1", asl_dat$age)] <- 1.1
+```
+
+## Chinook ASL
+The strata you assigned look good. Each strata represents about a quarter of the samples and/or escapement.
+```{r}
+knitr::kable(compare_strata(asl_dat, weir, passage)[, c("strata", "asl_dates", "asl_pct", "total_dates", "total_pct")], 
+             col.names = c("strata", "asl_dates", "asl_pct", "escapement_dates", "escapement_pct"))
+```
+  
+ASL samples were collected in proportion to abundance. This is enough to pool the data across time although we will look for composition differences across strata just for curiosity.  
+```{r, , fig.width = 7, fig.height = 7}
+plot_ks(weir, "passage")
+```
+
+### Chinook sex composition
+Likelihood ratio tests indicate sex composition was similar between time strata.
+```{r}
+t.sex<-table(asl_dat$strata,asl_dat$sex)
+addmargins(t.sex, c(1, 2))
+DescTools::GTest(t.sex)
+```
+
+Here is the Chinook sex-length table. We met the precision objective.
+```{r}
+sl <- asl(asl_dat, weir_sum) %>% tab_asl(totalname = "Weir Passage", output = "sl", display_cols = "stat")
+knitr::kable(sl)
+```
+
+### Chinook age composition
+Likelihood ratio tests indicate age composition was similar between time strata.
+```{r}
+clean_age <- asl_dat[asl_dat$age %in% c("1.1", "1.2", "1.3", "1.4"), ]
+t.age<-table(clean_age$strata,clean_age$age)
+addmargins(t.age, c(1, 2))
+DescTools::GTest(t.age)
+```
+
+Here is the Chinook age-length table. We met the precision objective.
+```{r}
+al0 <- asl(clean_age, weir_sum)
+al<- al0 %>% tab_asl(totalname = "Weir", output = "al", display_cols = "stat")
+knitr::kable(al)
+```
+
+### Chinook age-sex composition
+Here is the Chinook age-sex-length table.
+```{r}
+asl <- al0 %>% tab_asl(totalname = "Weir", output = "asl")
+knitr::kable(asl)
+```
+
+I've included an excel file with all of these age comps.
+```{r}
+WriteXLS::WriteXLS(c("sl", "al", "asl"),
+                   ".\\20 Deshka ASL.xlsx",
+                   SheetNames = c("Chinook sex comp", "Chinook age Comp", "Chinook agesex comp"),
+                   AdjWidth = TRUE,
+                   BoldHeaderRow = TRUE)
+```
