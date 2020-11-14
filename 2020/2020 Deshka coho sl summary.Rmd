@@ -52,7 +52,7 @@ Second, fish were only sampled during 2 of 4 weekly strata, with insufficent num
 aggregate(samples ~ strata, data = coho_weir, sum)
 ```
 
-I've created a sex composition table (without apportioning the incomplete weir count for your reference. If these numbers are reported we would want to make clear it was a grab sample which may not be representative of the entire run.
+I've created a sex composition table (without apportioning the incomplete weir count) for your reference. If these numbers are reported we would want to make clear it was a grab sample which may not be representative of the entire run.
 ```{r}
 #Produced a pooled age comp without apportioning the run becasue:
 #1) the weir was pulled early and
