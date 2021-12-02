@@ -1,0 +1,71 @@
+---
+title: "Deshka Weir 2021 - coho"
+author: "Adam Reimer"
+date: "11/30/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(magrittr)
+source("H:\\My Documents\\R_functions\\ASL_funs.R")
+coho_weir <- 
+  readxl::read_xlsx(".\\2021 Deshka coho sex comp_DL.xlsx",
+                    sheet = 3,
+                    range = "A5:F35",
+                    col_names = c("date", "passage", "samples", "strata"),
+                    col_types = c("date", "numeric", rep("skip", 2), "numeric", "text"))
+
+coho_weir_strata <-
+  coho_weir %>%
+  dplyr::group_by(strata) %>%
+  dplyr::summarise(total = sum(passage),
+                   samples = sum(samples))
+coho_weir_sum <- dplyr::summarise(coho_weir_strata, total = sum (total))
+
+coho_sl <- 
+  readxl::read_xlsx(".\\2021 Deshka coho sex comp_DL.xlsx",
+                    sheet = 4,
+                    range = "A5:F178",
+                    col_names = c("date", "sex", "length", "strata"),
+                    col_types = c("date", rep("skip", 2), "text", "numeric", "text"))
+```
+  
+## Coho SL
+Coho salmon sampling was insufficient to produce an unbiased estimate of sex composition or escapement by sex. Two problems were noted. First, sampling at the weir ended while significant number of fish were still migrating. We faced the same situation last year which prompted me to suggest adding a pull criteria to the next op plan. As I recall the explanation in 2020 had to do with high water forcing the crew to pull the weir early. Looking over the Inseason file you sent leads me to believe the water level was not too high this season although in any event the next op plan needs to either strike the coho objectives, add clarification about when and why we will pull the weir, and/or contain qualifiers about factors that might make us abandon the coho objectives.  
+
+```{r}
+#Looks like Weir was pulled early
+library(ggplot2)
+ggplot(coho_weir, aes(x = date, weight = passage)) + 
+  geom_bar() +
+  ggtitle("Deshka Coho Escapement") +
+  labs(x = "Date", y = "Coho Salmon")
+```
+
+Second, fish were only sampled during 3 of 4 weekly strata, with insufficient numbers during the second strata.
+
+```{r}
+#Only 4 strata
+#No samples in first 2 strata
+aggregate(samples ~ strata, data = coho_weir, sum)
+```
+
+I've created a sex composition table (without apportioning the incomplete weir count) for your reference. I pooled all of the data because the sex comps in the 3rd and 4th strata we very similar. If these numbers are reported we would want to make clear it was a grab sample which may not be representative of the entire run.
+```{r}
+#Produced a pooled age comp without apportioning the run becasue:
+#1) the weir was pulled early and
+#2) the run was sampled for just a few days
+pooled_sl <- asl(coho_sl) %>%
+  tab_asl(totalname = "Weir Passage", output = "sl")
+knitr::kable(pooled_sl)
+```
+
+The attached file has the results in excel format.
+```{r}
+WriteXLS::WriteXLS("pooled_sl",
+                   ".\\21 Deshka coho SL.xlsx",
+                   SheetNames = c("coho sex comp"),
+                   AdjWidth = TRUE,
+                   BoldHeaderRow = TRUE)
+```

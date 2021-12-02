@@ -10,6 +10,7 @@
 /forecasts07_17
 /2016/*.rtf
 *.xlsx
+*.xlsm
 *.xls
 *.docx
 *.html
