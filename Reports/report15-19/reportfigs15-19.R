@@ -1,9 +1,9 @@
 library(magrittr)
 library(ggplot2)
 dodge <- position_dodge(width=0.9)
-readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\report15-19\\Copy of Deshka Tbls_Figs_Apns__15-19_AR.xlsx", 
-                   sheet = "coho sex", 
-                   range = "A5:G15") %>%
+readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\report15-19\\Deshka Tbls_Figs_Apns__15-19_AR2_SD_DL(3).xlsx", 
+                   sheet = "Table 9 coho sex", 
+                   range = "A4:G14") %>%
   dplyr::rename(pct = '%', se = SE, lci = LCI, uci = UCI, n = 'Sample Size') %>%
   tidyr::fill(Year, .direction = "down") %>%
   ggplot(aes(x = Year, y = pct, fill = Sex))  +
@@ -14,8 +14,8 @@ readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\report15-19\\Copy of 
     theme_bw(base_size = 18) +
   ggtitle("Deshka River Coho Salmon Sex Composition")
 
-readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\Copy of Deshka Tbls_Figs_Apns__15-19_AR.xlsx", 
-                   sheet = "Tab6 KS sex comp", 
+readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\report15-19\\Deshka Tbls_Figs_Apns__15-19_AR2_SD_DL(3).xlsx", 
+                   sheet = "Table 6 KS sex comp", 
                    range = "A3:G13") %>%
   dplyr::rename(pct = '%', se = SE, lci = LCI, uci = UCI, n = 'Sample Size') %>%
   tidyr::fill(Year, .direction = "down") %>%
@@ -27,9 +27,9 @@ readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\Copy of Deshka Tbls_F
   theme_bw(base_size = 18) +
   ggtitle("Deshka River Chinook Salmon Sex Composition")
 
-readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\Copy of Deshka Tbls_Figs_Apns__15-19_AR.xlsx", 
-                   sheet = "Tab 5", 
-                   range = "A7:N23",
+readxl::read_excel("H:\\My Documents\\DeshkaWeir\\Reports\\report15-19\\Deshka Tbls_Figs_Apns__15-19_AR2_SD_DL(3).xlsx", 
+                   sheet = "Table 5", 
+                   range = "A4:N19",
                    col_names = c("sex", "year", paste0(c("p_", "se_", "skip"), rep(1:4, each = 3))),
                    col_types = c("text", "numeric", rep(c("numeric", "numeric", "skip"), times = 4))) %>%
   dplyr::filter(!is.na(year)) %>%
@@ -78,3 +78,4 @@ flood2 <-
 hist(flood2, seq(0, 0.2, 0.025))
 abline(v = coho_rt$value[coho_rt$jd == format(as.Date("Aug-28-2016", "%b-%d-%Y"), "%j") & coho_rt$year == "2016"] -
          coho_rt$value[coho_rt$jd == format(as.Date("Aug-24-2016", "%b-%d-%Y"), "%j") & coho_rt$year == "2016"])
+
