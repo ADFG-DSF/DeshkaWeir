@@ -13,4 +13,5 @@
 *.xlsm
 *.xls
 *.docx
-*.html
+*.csv
+*.log

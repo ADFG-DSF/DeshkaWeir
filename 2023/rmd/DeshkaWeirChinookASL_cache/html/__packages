@@ -1,0 +1,15 @@
+lubridate
+WriteXLS
+magrittr
+dplyr
+tidyverse
+ggplot2
+tibble
+tidyr
+readr
+purrr
+stringr
+forcats
+DT
+openxlsx
+downloadthis

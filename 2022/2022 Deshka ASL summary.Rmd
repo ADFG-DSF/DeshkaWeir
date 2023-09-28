@@ -1,0 +1,148 @@
+---
+title: "Deshka Weir 2022 - Chinook"
+author: "Logan Wendling"
+date: '2022-11-02'
+output: html_document
+---
+
+```{r,echo=F,warning=FALSE,message=FALSE}
+setwd("S:/RTS/DeshkaWeir/2022")
+library(lubridate)
+library(WriteXLS)
+```
+
+```{r setup, include=FALSE}
+source("H:\\My Documents\\R_functions\\ASL_funs.R")
+library(magrittr)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+weir <- readxl::read_xlsx(".\\Deshka Chinook Age Analysis 2022_DL.xlsx",
+                          sheet = 2,
+                          range = "A11:M80",
+                          col_names = c("date", "passage", "samples", "strata"),
+                          col_types = c("date", "numeric", rep("skip", 3), "guess", rep("skip", 6), "numeric"))
+
+asl_dat <- readxl::read_xlsx(".\\Deshka Chinook Age Analysis 2022_DL.xlsx",
+                             sheet = 4,
+                             range = "D2:N130",
+                             col_names = c("date", "length", "sex", "age", "strata"),
+                             col_types = c("date", rep("skip", 2), rep("guess", 2), rep("skip", 4), "text", "numeric"))
+asl_dat$age[grepl("1.1", asl_dat$age)] <- 1.1
+
+
+strat1 <- interval(ymd("2022-05-31 UTC"),ymd("2022-06-18 UTC"))   #Adjust Begin and end dates for strata
+strat2 <- interval(ymd("2022-06-19 UTC"),ymd("2022-06-28 UTC"))
+strat3 <- interval(ymd("2022-06-29 UTC"),ymd("2022-08-08 UTC"))
+#strat4 <- interval(ymd(NA),ymd(NA))
+
+asl_dat$strata <- ifelse( asl_dat$date %within% strat1,1,asl_dat$strata)   #Assign strata to dates
+asl_dat$strata <- ifelse( asl_dat$date %within% strat2,2,asl_dat$strata)
+asl_dat$strata <- ifelse( asl_dat$date %within% strat3,3,asl_dat$strata)
+#asl_dat$strata <- ifelse( asl_dat$date %within% strat4,4,asl_dat$strata)   
+
+weir$strata <- ifelse( weir$date %within% strat1,1,weir$strata)   #Assign strata to dates to match ASL
+weir$strata <- ifelse( weir$date %within% strat2,2,weir$strata)
+weir$strata <- ifelse( weir$date %within% strat3,3,weir$strata)
+weir$strata <- ifelse( weir$date %within% strat3,3,weir$strata)
+
+weir_strata <- 
+  weir %>%
+  dplyr::group_by(strata) %>%
+  dplyr::summarise(total = sum(passage))
+weir_sum <- data.frame(total = sum(weir$passage))
+```
+
+
+## Chinook ASL
+
+
+```{r}
+knitr::kable(compare_strata(asl_dat, weir, passage)[, c("strata", "asl_dates", "asl_pct", "total_dates", "total_pct")], 
+             col.names = c("strata", "asl_dates", "asl_pct", "escapement_dates", "escapement_pct"))
+```
+
+
+
+```{r, , fig.width = 7, fig.height = 7}
+plot_ks(weir, "passage")
+```
+
+### Chinook sex composition
+
+Likelihood ratio tests indicate sex composition did not differ between time strata.
+
+```{r}
+t.sex<-table(asl_dat$strata,asl_dat$sex)
+addmargins(t.sex, c(1, 2))
+DescTools::GTest(t.sex)
+```
+
+Here is the Chinook sex-length table. We used a time stratified estimate and met the precision objective.
+
+```{r}
+sl <- 
+  asl(asl_dat, weir_strata, groupvars = "strata") %>% 
+  combine_strata() %>% 
+  tab_asl(totalname = "Weir Passage", output = "sl", display_cols = "stat")
+knitr::kable(sl)
+```
+
+### Chinook age composition
+
+Likelihood ratio tests indicate age composition differed between time strata.
+
+```{r}
+clean_age <- asl_dat[asl_dat$age %in% c("1.1", "1.2", "1.3", "1.4"), ]
+t.age <- table(clean_age$strata,clean_age$age)
+addmargins(t.age, c(1, 2))
+DescTools::GTest(t.age)
+```
+
+Here is the Chinook age-length table. We used a time stratified estimate and met the precision objective.
+
+```{r}
+al0 <- asl(clean_age, weir_strata, groupvars = "strata")
+al<- 
+  al0 %>% 
+  combine_strata() %>%
+  tab_asl(totalname = "Weir", output = "al", display_cols = "stat")
+knitr::kable(al)
+```
+
+### Chinook age-sex composition
+
+Here is the Chinook age-sex-length table.
+
+```{r}
+chin_asl <- 
+  al0 %>%
+  combine_strata() %>% 
+  tab_asl(totalname = "Weir", output = "asl") 
+knitr::kable(chin_asl)
+```
+
+I've included an excel file with all of these age comps.
+
+```{r,warning=FALSE}
+library(openxlsx)
+#WriteXLS(x = c("sl", "al", "chin_asl"),ExcelFileName = ".//22 Deshka ASL_LFW10_4.xlsx",
+#                   SheetNames = c("Chinook sex comp", "Chinook age Comp", "Chinook agesex comp"),
+#                   AdjWidth = TRUE,
+ #                  BoldHeaderRow = TRUE,envir = parent.frame())
+
+WB = createWorkbook("Deshka ASL")
+addWorksheet(WB,"Chinook Sex Comp")
+addWorksheet(WB,"Chinook Age Comp")
+addWorksheet(WB,"Chinook SexAge Comp")
+writeData(WB,sheet = 1,sl,colNames = TRUE)
+writeData(WB,sheet = 2,al,colNames = TRUE)
+writeData(WB,sheet = 3,chin_asl,colNames = TRUE)
+saveWorkbook(WB, ".//22 Deshka ASL_LFW10_4.xlsx", overwrite = TRUE)
+
+
+#write.xlsx(sl,file = ".//22 Deshka ASL_LFW10_4.xlsx",sheetName = "Chinook Sex Comp",colNames = TRUE)
+#write.xlsx(al,file = ".//22 Deshka ASL_LFW10_4.xlsx",sheetName = "Chinook Age Comp",append = TRUE)
+#write.xlsx(chin_asl,file = ".//22 Deshka ASL_LFW10_4.xlsx",sheetName = "Chinook AgeSex Comp",append = TRUE)
+
+```
+
+
